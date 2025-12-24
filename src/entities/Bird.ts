@@ -34,20 +34,13 @@ export class Bird {
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(25); // Below lizard but above grass
 
-    // Warning text for attack - white outline for accessibility
-    this.warningText = scene.add.text(0, 0, '⚠️🦅 DANGER!', {
-      fontSize: '16px',
+    // Warning text for attack - red background with white text
+    this.warningText = scene.add.text(0, 0, ' ⚠️🦅 DANGER! ', {
+      fontSize: '14px',
       fontStyle: 'bold',
-      color: '#ffff00', // Yellow text for visibility
-      stroke: '#ffffff', // White outline
-      strokeThickness: 4,
-      shadow: {
-        offsetX: 2,
-        offsetY: 2,
-        color: '#000000',
-        blur: 4,
-        fill: true,
-      },
+      color: '#ffffff',
+      backgroundColor: '#cc0000',
+      padding: { x: 8, y: 4 },
     });
     this.warningText.setOrigin(0.5, 0.5);
     this.warningText.setDepth(101);
