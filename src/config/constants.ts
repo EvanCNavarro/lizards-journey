@@ -67,10 +67,10 @@ export const BUG_TYPES = {
 export const BIRD = {
   shadowGrowthRate: 0.5, // How fast shadow grows as bird approaches
   minShadowSize: 20,
-  maxShadowSize: 80,
-  attackDuration: 3000, // ms from shadow appear to swoop
-  cooldownMin: 5000, // ms between attacks
-  cooldownMax: 12000,
+  maxShadowSize: 70, // Reduced from 80
+  attackDuration: 4000, // Increased from 3000 - 25% slower attack
+  cooldownMin: 6000, // Increased from 5000
+  cooldownMax: 14000, // Increased from 12000
 };
 
 // World map islands

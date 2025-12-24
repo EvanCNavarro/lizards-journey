@@ -5,6 +5,7 @@ export class Bird {
   private scene: Phaser.Scene;
   private graphics: Phaser.GameObjects.Graphics;
   private warningText: Phaser.GameObjects.Text;
+  private birdEmoji: Phaser.GameObjects.Text;
 
   // Bird state
   private state: 'circling' | 'attacking' = 'circling';
@@ -33,16 +34,32 @@ export class Bird {
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(25); // Below lizard but above grass
 
-    // Warning text for attack
-    this.warningText = scene.add.text(0, 0, '⚠️ DANGER!', {
-      fontSize: '18px',
-      color: '#ff0000',
-      stroke: '#000000',
-      strokeThickness: 3,
+    // Warning text for attack - white outline for accessibility
+    this.warningText = scene.add.text(0, 0, '⚠️🦅 DANGER!', {
+      fontSize: '16px',
+      fontStyle: 'bold',
+      color: '#ffff00', // Yellow text for visibility
+      stroke: '#ffffff', // White outline
+      strokeThickness: 4,
+      shadow: {
+        offsetX: 2,
+        offsetY: 2,
+        color: '#000000',
+        blur: 4,
+        fill: true,
+      },
     });
     this.warningText.setOrigin(0.5, 0.5);
     this.warningText.setDepth(101);
     this.warningText.setVisible(false);
+
+    // Bird emoji that shows inside the shadow
+    this.birdEmoji = scene.add.text(0, 0, '🦅', {
+      fontSize: '20px',
+    });
+    this.birdEmoji.setOrigin(0.5, 0.5);
+    this.birdEmoji.setDepth(26);
+    this.birdEmoji.setAlpha(0.6);
 
     // Initial cooldown before first attack
     this.currentCooldown = Phaser.Math.Between(3000, 5000);
@@ -136,15 +153,17 @@ export class Bird {
     this.graphics.clear();
 
     const isAttacking = this.state === 'attacking';
-    const baseAlpha = isAttacking ? 0.6 : 0.35;
+    const baseAlpha = isAttacking ? 0.5 : 0.3; // Reduced opacity
 
     // Outer glow (red-tinted when attacking)
     if (isAttacking) {
-      this.graphics.fillStyle(0x660000, baseAlpha * 0.4);
+      this.graphics.fillStyle(0x660000, baseAlpha * 0.3);
       this.graphics.fillEllipse(this.shadowX, this.shadowY, this.shadowSize * 1.4, this.shadowSize * 0.9);
 
-      // Red danger ring
-      this.graphics.lineStyle(3, 0xff0000, baseAlpha);
+      // Red danger ring with white inner border for accessibility
+      this.graphics.lineStyle(4, 0xffffff, baseAlpha * 0.8);
+      this.graphics.strokeEllipse(this.shadowX, this.shadowY, this.shadowSize * 1.15, this.shadowSize * 0.72);
+      this.graphics.lineStyle(3, 0xff0000, baseAlpha + 0.2);
       this.graphics.strokeEllipse(this.shadowX, this.shadowY, this.shadowSize * 1.2, this.shadowSize * 0.75);
     }
 
@@ -152,37 +171,11 @@ export class Bird {
     this.graphics.fillStyle(0x000000, baseAlpha);
     this.graphics.fillEllipse(this.shadowX, this.shadowY, this.shadowSize, this.shadowSize * 0.6);
 
-    // Bird silhouette
-    this.graphics.fillStyle(0x222222, baseAlpha + 0.15);
-
-    // Body
-    const bodyW = this.shadowSize * 0.25;
-    const bodyH = this.shadowSize * 0.12;
-    this.graphics.fillEllipse(this.shadowX, this.shadowY, bodyW, bodyH);
-
-    // Wings - spread wider when attacking
-    const wingSpread = isAttacking ? 0.4 : 0.3;
-    const wingW = this.shadowSize * wingSpread;
-    const wingH = this.shadowSize * 0.08;
-
-    // Left wing
-    this.graphics.beginPath();
-    this.graphics.moveTo(this.shadowX - bodyW * 0.3, this.shadowY);
-    this.graphics.lineTo(this.shadowX - wingW, this.shadowY - wingH);
-    this.graphics.lineTo(this.shadowX - wingW * 0.7, this.shadowY + wingH * 0.3);
-    this.graphics.closePath();
-    this.graphics.fillPath();
-
-    // Right wing
-    this.graphics.beginPath();
-    this.graphics.moveTo(this.shadowX + bodyW * 0.3, this.shadowY);
-    this.graphics.lineTo(this.shadowX + wingW, this.shadowY - wingH);
-    this.graphics.lineTo(this.shadowX + wingW * 0.7, this.shadowY + wingH * 0.3);
-    this.graphics.closePath();
-    this.graphics.fillPath();
-
-    // Head (small circle)
-    this.graphics.fillCircle(this.shadowX, this.shadowY - bodyH * 1.5, bodyH * 0.4);
+    // Update bird emoji position and scale
+    this.birdEmoji.setPosition(this.shadowX, this.shadowY);
+    const emojiScale = this.shadowSize / 40; // Scale based on shadow size
+    this.birdEmoji.setScale(emojiScale);
+    this.birdEmoji.setAlpha(isAttacking ? 0.8 : 0.5);
   }
 
   private executeAttack() {
@@ -232,5 +225,6 @@ export class Bird {
   destroy() {
     this.graphics.destroy();
     this.warningText.destroy();
+    this.birdEmoji.destroy();
   }
 }
