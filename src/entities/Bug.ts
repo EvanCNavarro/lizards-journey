@@ -16,6 +16,7 @@ export class Bug extends Phaser.GameObjects.Container {
   private boundaryRadius: number;
   private centerX: number;
   private centerY: number;
+  private speedMultiplier: number = 1;
 
   constructor(
     scene: Phaser.Scene,
@@ -99,10 +100,11 @@ export class Bug extends Phaser.GameObjects.Container {
       this.direction.set(Math.cos(angleToCenter), Math.sin(angleToCenter));
     }
 
-    // Apply movement
+    // Apply movement with speed multiplier
+    const speed = this.config.speed * this.speedMultiplier;
     this.body.setVelocity(
-      this.direction.x * this.config.speed,
-      this.direction.y * this.config.speed
+      this.direction.x * speed,
+      this.direction.y * speed
     );
 
     // Face movement direction
@@ -119,5 +121,9 @@ export class Bug extends Phaser.GameObjects.Container {
 
   getRadius(): number {
     return this.config.size / 2;
+  }
+
+  setSpeedMultiplier(multiplier: number) {
+    this.speedMultiplier = multiplier;
   }
 }

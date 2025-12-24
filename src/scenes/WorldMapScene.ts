@@ -319,6 +319,8 @@ export class WorldMapScene extends Phaser.Scene {
       this.scene.start('Level1Scene');
     } else if (island.id === 2) {
       this.scene.start('Level2Scene');
+    } else if (island.id === 3) {
+      this.scene.start('Level3Scene');
     } else {
       // Coming soon
       this.modal.show({

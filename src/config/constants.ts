@@ -97,7 +97,7 @@ export const ISLANDS = [
     x: 650,
     y: 350,
     unlocked: false,
-    description: 'Coming soon...'
+    description: 'Climb 8 trees and catch bugs in each canopy!'
   },
 ];
 

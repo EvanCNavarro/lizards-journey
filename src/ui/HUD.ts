@@ -124,6 +124,14 @@ export class HUD {
     this.container.setVisible(visible);
   }
 
+  hideTimer() {
+    this.timerText.setVisible(false);
+  }
+
+  showTimer() {
+    this.timerText.setVisible(true);
+  }
+
   destroy() {
     this.container.destroy();
   }

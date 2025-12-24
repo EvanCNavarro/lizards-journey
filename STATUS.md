@@ -1,6 +1,6 @@
 # Lizard's Journey - Development Status
 
-> Last updated: December 23, 2024 (Level 2 added)
+> Last updated: December 23, 2024 (All 3 levels complete!)
 
 ## Live Links
 - **Play**: https://lizards-journey.vercel.app
@@ -35,6 +35,15 @@
 - Rock collision prevents lizard from walking through
 - Bugs spawn avoiding rocks
 
+**Level 3 - Dense Jungle (designed by 6-year-old!):**
+- Two-phase gameplay: ground view → canopy view
+- 8 trees shown in perspective (front to back)
+- Walk to tree → climb up → catch bugs in canopy
+- Each tree canopy is a mini bug-catching arena
+- Progressive difficulty: Tree 1 easiest → Tree 8 hardest
+- No timer, no bird - trees are the challenge
+- ~36 total bugs across all 8 trees
+
 **Bird Hazard:**
 - Always-visible shadow with 🦅 emoji circling overhead
 - Attack sequence: shadow grows, red+white rings, "⚠️🦅 DANGER!" label
@@ -60,7 +69,7 @@
 
 ## Known Issues / Polish Needed
 
-1. **Level 3** - Not implemented yet (shows "Coming Soon")
+1. **All levels complete** - MVP feature-complete
 2. **Assets** - Using geometric shapes, no real sprites
 3. **Audio** - No sound effects or music
 4. **Mobile joystick** - Works but could be more polished
@@ -94,7 +103,8 @@ src/
 │   ├── BootScene.ts        # Asset loading
 │   ├── WorldMapScene.ts    # Island selection/swimming
 │   ├── Level1Scene.ts      # Starter Grove gameplay
-│   └── Level2Scene.ts      # Rocky Shore gameplay
+│   ├── Level2Scene.ts      # Rocky Shore gameplay
+│   └── Level3Scene.ts      # Dense Jungle (tree climbing)
 ├── entities/
 │   ├── Lizard.ts           # Player character
 │   ├── Bug.ts              # Collectible bugs (4 types)
@@ -133,13 +143,12 @@ BIRD: 4.5s attack, 6-14s cooldown, max shadow 70
 - [x] localStorage saves
 - [x] Desktop + mobile controls
 - [x] Level 2 gameplay
-- [ ] Level 3 gameplay
+- [x] Level 3 gameplay (tree climbing!)
 
 ### Phase 2 (Polish)
 - [ ] Proper sprite art (replace shapes)
 - [ ] Sound effects
 - [ ] Supabase integration (auth, leaderboards)
-- [ ] Level 3: Dense Jungle
 
 ### Phase 3 (Features)
 - [ ] Power-ups
@@ -194,6 +203,7 @@ git add -A && git commit -m "message" && git push
 4. Check LESSONS_LEARNED.md for architecture guidance
 
 **Next logical tasks:**
-- Implement Level 3 (Dense Jungle) with jungle-specific mechanics
-- Add sound effects
+- Add sound effects (bug catch, bird swoop, level complete)
 - Replace geometric shapes with sprites
+- Supabase integration for leaderboards
+- Balance Level 3 difficulty based on playtesting
