@@ -44,6 +44,7 @@ export class Level3Scene extends Phaser.Scene {
   // Ground phase visuals
   private groundContainer!: Phaser.GameObjects.Container;
   private treeSprites: Phaser.GameObjects.Container[] = [];
+  private treePositions: { x: number; y: number; scale: number }[] = [];
 
   // Canopy phase visuals
   private canopyContainer!: Phaser.GameObjects.Container;
@@ -68,6 +69,7 @@ export class Level3Scene extends Phaser.Scene {
     this.totalScore = 0;
     this.bugs = [];
     this.treeSprites = [];
+    this.treePositions = [];
     this.isClimbing = false;
 
     // Create both view containers
@@ -128,23 +130,23 @@ export class Level3Scene extends Phaser.Scene {
     this.groundContainer.add(grassStripe);
 
     // Create 8 trees in perspective (back to front)
-    const treePositions = [
-      { x: 700, y: GAME_HEIGHT - 140, scale: 0.4 },  // Tree 8 (farthest)
-      { x: 620, y: GAME_HEIGHT - 150, scale: 0.5 },  // Tree 7
-      { x: 540, y: GAME_HEIGHT - 160, scale: 0.55 }, // Tree 6
-      { x: 460, y: GAME_HEIGHT - 170, scale: 0.6 },  // Tree 5
-      { x: 380, y: GAME_HEIGHT - 185, scale: 0.7 },  // Tree 4
-      { x: 300, y: GAME_HEIGHT - 200, scale: 0.8 },  // Tree 3
-      { x: 220, y: GAME_HEIGHT - 220, scale: 0.9 },  // Tree 2
-      { x: 150, y: GAME_HEIGHT - 250, scale: 1.0 },  // Tree 1 (closest)
+    // Index 0 = Tree 1 (closest/first to climb), Index 7 = Tree 8 (farthest/last)
+    this.treePositions = [
+      { x: 150, y: GAME_HEIGHT - 140, scale: 1.0 },  // Tree 1 (closest - first to climb)
+      { x: 220, y: GAME_HEIGHT - 150, scale: 0.9 },  // Tree 2
+      { x: 300, y: GAME_HEIGHT - 160, scale: 0.8 },  // Tree 3
+      { x: 380, y: GAME_HEIGHT - 170, scale: 0.7 },  // Tree 4
+      { x: 460, y: GAME_HEIGHT - 180, scale: 0.6 },  // Tree 5
+      { x: 540, y: GAME_HEIGHT - 190, scale: 0.55 }, // Tree 6
+      { x: 620, y: GAME_HEIGHT - 200, scale: 0.5 },  // Tree 7
+      { x: 700, y: GAME_HEIGHT - 210, scale: 0.4 },  // Tree 8 (farthest - last to climb)
     ];
 
-    // Draw trees from back to front
-    for (let i = 0; i < 8; i++) {
-      const pos = treePositions[7 - i]; // Reverse order for depth
-      const treeIndex = 7 - i;
-      const tree = this.createTree(pos.x, pos.y, pos.scale, treeIndex);
-      tree.setDepth(10 + i);
+    // Draw trees from back to front (farthest first for proper depth)
+    for (let i = 7; i >= 0; i--) {
+      const pos = this.treePositions[i];
+      const tree = this.createTree(pos.x, pos.y, pos.scale, i);
+      tree.setDepth(10 + (7 - i)); // Closer trees have higher depth
       this.treeSprites.push(tree);
       this.groundContainer.add(tree);
     }
@@ -411,14 +413,16 @@ export class Level3Scene extends Phaser.Scene {
 
   private checkTreeProximity() {
     if (this.currentTree >= 8) return;
+    if (this.modal.getIsVisible()) return;
 
-    // Tree 1 (closest) position
-    const treeX = 150;
-    const treeY = GAME_HEIGHT - 120;
+    // Get the current tree's position
+    const treePos = this.treePositions[this.currentTree];
+    if (!treePos) return;
 
-    const distance = Phaser.Math.Distance.Between(this.lizard.x, this.lizard.y, treeX, treeY);
+    const distance = Phaser.Math.Distance.Between(this.lizard.x, this.lizard.y, treePos.x, treePos.y);
 
-    if (distance < 50) {
+    // Larger detection radius for easier interaction
+    if (distance < 60) {
       // Show prompt to climb
       this.modal.show({
         title: `🌳 Tree ${this.currentTree + 1}`,
@@ -463,9 +467,10 @@ export class Level3Scene extends Phaser.Scene {
     this.lizard.move(dx, dy);
 
     if (this.phase === 'ground') {
-      // Constrain to ground area
+      // Constrain to ground area (allow reaching all trees)
+      // Trees range from y=GAME_HEIGHT-140 (tree 1) to y=GAME_HEIGHT-210 (tree 8)
       this.lizard.x = Phaser.Math.Clamp(this.lizard.x, 50, GAME_WIDTH - 50);
-      this.lizard.y = Phaser.Math.Clamp(this.lizard.y, GAME_HEIGHT - 180, GAME_HEIGHT - 100);
+      this.lizard.y = Phaser.Math.Clamp(this.lizard.y, GAME_HEIGHT - 250, GAME_HEIGHT - 100);
 
       // Check if near current tree
       this.checkTreeProximity();

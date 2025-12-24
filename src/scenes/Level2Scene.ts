@@ -58,8 +58,10 @@ export class Level2Scene extends Phaser.Scene {
     // Create island with rocks
     this.createIsland();
 
-    // Create lizard at center
-    this.lizard = new Lizard(this, this.islandCenterX, this.islandCenterY + 50);
+    // Create lizard at safe position (away from rocks)
+    // Rocks are at: (-80,-40), (70,-60), (-50,50), (90,30), (0,-80)
+    // Spawn at bottom-center of island, away from all rocks
+    this.lizard = new Lizard(this, this.islandCenterX, this.islandCenterY + 100);
     this.lizard.setSwimming(false);
 
     // Create bugs (more beetles and crickets for rocky terrain)
@@ -346,9 +348,26 @@ export class Level2Scene extends Phaser.Scene {
         this.lizard.x = rock.x + rx * Math.cos(angle);
         this.lizard.y = rock.y + ry * Math.sin(angle);
 
-        // Stop velocity toward rock
+        // Allow sliding along rock (remove only the component moving INTO the rock)
         const body = this.lizard.body as Phaser.Physics.Arcade.Body;
-        body.setVelocity(0, 0);
+        const vx = body.velocity.x;
+        const vy = body.velocity.y;
+
+        // Normal vector pointing outward from rock
+        const normalX = dx / (rx * rx);
+        const normalY = dy / (ry * ry);
+        const normalLen = Math.sqrt(normalX * normalX + normalY * normalY);
+
+        if (normalLen > 0) {
+          const nx = normalX / normalLen;
+          const ny = normalY / normalLen;
+
+          // Only remove the component of velocity pointing into the rock
+          const inwardSpeed = -(vx * nx + vy * ny);
+          if (inwardSpeed > 0) {
+            body.setVelocity(vx + inwardSpeed * nx, vy + inwardSpeed * ny);
+          }
+        }
       }
     }
   }
