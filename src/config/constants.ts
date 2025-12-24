@@ -19,7 +19,7 @@ export const COLORS = {
 export const LEVEL1 = {
   timeLimit: 60, // seconds
   bugsToWin: 10,
-  islandRadius: 220,
+  islandRadius: 250, // Increased for more play area
 };
 
 // Lizard settings

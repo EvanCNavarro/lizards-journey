@@ -243,16 +243,30 @@ export class Level1Scene extends Phaser.Scene {
   }
 
   private constrainToIsland() {
+    // Use ellipse equation: (x/a)^2 + (y/b)^2 = 1
+    // where a = islandRadius, b = islandRadius * 0.8
     const dx = this.lizard.x - this.islandCenterX;
-    const dy = (this.lizard.y - this.islandCenterY) / 0.8; // Account for ellipse
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const dy = this.lizard.y - this.islandCenterY;
 
-    if (distance > this.islandRadius - LIZARD.size / 2) {
-      const angle = Math.atan2(dy, dx);
-      const maxDist = this.islandRadius - LIZARD.size / 2;
-      this.lizard.x = this.islandCenterX + Math.cos(angle) * maxDist;
-      this.lizard.y = this.islandCenterY + Math.sin(angle) * maxDist * 0.8;
-      (this.lizard.body as Phaser.Physics.Arcade.Body).reset(this.lizard.x, this.lizard.y);
+    const a = this.islandRadius - LIZARD.size / 2; // horizontal radius
+    const b = a * 0.8; // vertical radius (ellipse is squished)
+
+    // Check if outside ellipse: (dx/a)^2 + (dy/b)^2 > 1
+    const ellipseDistance = (dx * dx) / (a * a) + (dy * dy) / (b * b);
+
+    if (ellipseDistance > 1) {
+      // Project back onto ellipse edge
+      const angle = Math.atan2(dy / b, dx / a);
+      const newX = this.islandCenterX + Math.cos(angle) * a;
+      const newY = this.islandCenterY + Math.sin(angle) * b;
+
+      // Smoothly move back instead of hard reset
+      this.lizard.x = newX;
+      this.lizard.y = newY;
+
+      // Stop velocity in the outward direction
+      const body = this.lizard.body as Phaser.Physics.Arcade.Body;
+      body.setVelocity(0, 0);
     }
   }
 

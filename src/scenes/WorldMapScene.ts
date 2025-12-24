@@ -24,6 +24,7 @@ export class WorldMapScene extends Phaser.Scene {
   private islands: Island[] = [];
   private waveOffset: number = 0;
   private waveGraphics!: Phaser.GameObjects.Graphics;
+  private modalCooldown: number = 0; // Prevent modal from re-triggering immediately
 
   constructor() {
     super({ key: 'WorldMapScene' });
@@ -43,9 +44,12 @@ export class WorldMapScene extends Phaser.Scene {
     // Create dotted paths between islands
     this.createPaths();
 
-    // Create lizard (swimming mode)
-    this.lizard = new Lizard(this, 100, GAME_HEIGHT / 2);
+    // Create lizard (swimming mode) - spawn in bottom-left, away from islands
+    this.lizard = new Lizard(this, 80, GAME_HEIGHT - 100);
     this.lizard.setSwimming(true);
+
+    // Reset modal cooldown
+    this.modalCooldown = 0;
 
     // Set world bounds
     this.physics.world.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
@@ -175,7 +179,12 @@ export class WorldMapScene extends Phaser.Scene {
     }
   }
 
-  update(time: number, _delta: number) {
+  update(time: number, delta: number) {
+    // Decrease modal cooldown
+    if (this.modalCooldown > 0) {
+      this.modalCooldown -= delta;
+    }
+
     if (this.modal.getIsVisible()) {
       this.lizard.stop();
       return;
@@ -200,12 +209,14 @@ export class WorldMapScene extends Phaser.Scene {
     // Move lizard
     this.lizard.move(dx, dy);
 
-    // Check proximity to islands
-    for (const island of this.islands) {
-      const distance = Phaser.Math.Distance.Between(this.lizard.x, this.lizard.y, island.x, island.y);
-      if (distance < WORLD_MAP.interactionRadius + 40) {
-        this.showIslandModal(island);
-        break;
+    // Check proximity to islands (only if cooldown expired)
+    if (this.modalCooldown <= 0) {
+      for (const island of this.islands) {
+        const distance = Phaser.Math.Distance.Between(this.lizard.x, this.lizard.y, island.x, island.y);
+        if (distance < WORLD_MAP.interactionRadius + 40) {
+          this.showIslandModal(island);
+          break;
+        }
       }
     }
 
@@ -251,7 +262,8 @@ export class WorldMapScene extends Phaser.Scene {
           {
             text: 'Back',
             callback: () => {
-              // Modal closes automatically
+              // Set cooldown so modal doesn't immediately re-trigger
+              this.modalCooldown = 1000; // 1 second cooldown
             },
           },
         ],
@@ -265,7 +277,8 @@ export class WorldMapScene extends Phaser.Scene {
             text: 'OK',
             primary: true,
             callback: () => {
-              // Modal closes automatically
+              // Set cooldown so modal doesn't immediately re-trigger
+              this.modalCooldown = 1000; // 1 second cooldown
             },
           },
         ],

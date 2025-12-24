@@ -3,7 +3,10 @@ import { BIRD } from '../config/constants';
 
 export class Bird {
   private scene: Phaser.Scene;
-  private shadow: Phaser.GameObjects.Ellipse;
+  private shadowContainer: Phaser.GameObjects.Container;
+  private shadowOuter: Phaser.GameObjects.Ellipse;
+  private shadowInner: Phaser.GameObjects.Ellipse;
+  private birdShape: Phaser.GameObjects.Graphics;
   private isAttacking: boolean = false;
   private attackTimer: number = 0;
   private cooldownTimer: number = 0;
@@ -17,13 +20,56 @@ export class Bird {
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
 
-    // Create shadow ellipse
-    this.shadow = scene.add.ellipse(0, 0, BIRD.minShadowSize, BIRD.minShadowSize * 0.6, 0x000000, 0);
-    this.shadow.setDepth(30);
-    this.shadow.setVisible(false);
+    // Create shadow container
+    this.shadowContainer = scene.add.container(0, 0);
+    this.shadowContainer.setDepth(35);
+    this.shadowContainer.setVisible(false);
+
+    // Outer shadow (darker ring)
+    this.shadowOuter = scene.add.ellipse(0, 0, BIRD.minShadowSize, BIRD.minShadowSize * 0.6, 0x000000, 0.3);
+    this.shadowOuter.setStrokeStyle(3, 0x000000, 0.5);
+    this.shadowContainer.add(this.shadowOuter);
+
+    // Inner shadow (core)
+    this.shadowInner = scene.add.ellipse(0, 0, BIRD.minShadowSize * 0.6, BIRD.minShadowSize * 0.4, 0x000000, 0.5);
+    this.shadowContainer.add(this.shadowInner);
+
+    // Bird silhouette shape
+    this.birdShape = scene.add.graphics();
+    this.drawBirdShape(BIRD.minShadowSize * 0.5);
+    this.shadowContainer.add(this.birdShape);
 
     // Set initial cooldown
     this.resetCooldown();
+  }
+
+  private drawBirdShape(size: number) {
+    this.birdShape.clear();
+    this.birdShape.fillStyle(0x000000, 0.6);
+
+    // Simple bird silhouette (body + wings)
+    const wingSpan = size * 0.8;
+    const bodyLength = size * 0.4;
+
+    // Body (ellipse-ish)
+    this.birdShape.fillEllipse(0, 0, bodyLength, bodyLength * 0.5);
+
+    // Left wing
+    this.birdShape.fillTriangle(
+      -bodyLength * 0.3, 0,
+      -wingSpan, -size * 0.15,
+      -wingSpan * 0.5, size * 0.1
+    );
+
+    // Right wing
+    this.birdShape.fillTriangle(
+      bodyLength * 0.3, 0,
+      wingSpan, -size * 0.15,
+      wingSpan * 0.5, size * 0.1
+    );
+
+    // Head
+    this.birdShape.fillCircle(0, -bodyLength * 0.3, bodyLength * 0.2);
   }
 
   onAttack(callback: (x: number, y: number, radius: number) => void) {
@@ -66,9 +112,10 @@ export class Bird {
       this.targetY = centerY + Math.sin(angle) * boundaryRadius * 0.8;
     }
 
-    this.shadow.setPosition(this.targetX, this.targetY);
-    this.shadow.setVisible(true);
-    this.shadow.setAlpha(0.2);
+    this.shadowContainer.setPosition(this.targetX, this.targetY);
+    this.shadowContainer.setVisible(true);
+    this.shadowContainer.setAlpha(0.4);
+    this.shadowContainer.setScale(0.3); // Start small
   }
 
   private updateAttack(delta: number, playerX: number, playerY: number) {
@@ -83,17 +130,23 @@ export class Bird {
 
     // Grow shadow
     this.shadowSize = BIRD.minShadowSize + (BIRD.maxShadowSize - BIRD.minShadowSize) * progress;
-    this.shadow.setSize(this.shadowSize, this.shadowSize * 0.6);
+    this.shadowOuter.setSize(this.shadowSize, this.shadowSize * 0.6);
+    this.shadowInner.setSize(this.shadowSize * 0.6, this.shadowSize * 0.4);
 
-    // Increase opacity
-    const alpha = 0.2 + 0.5 * progress;
-    this.shadow.setAlpha(alpha);
+    // Redraw bird shape at new size
+    this.drawBirdShape(this.shadowSize * 0.5);
+
+    // Increase opacity and scale
+    const alpha = 0.4 + 0.5 * progress;
+    const scale = 0.3 + 0.7 * progress;
+    this.shadowContainer.setAlpha(alpha);
+    this.shadowContainer.setScale(scale);
 
     // Track toward player slowly
-    const trackSpeed = 0.3;
+    const trackSpeed = 0.5;
     this.targetX = Phaser.Math.Linear(this.targetX, playerX, trackSpeed * (delta / 1000));
     this.targetY = Phaser.Math.Linear(this.targetY, playerY, trackSpeed * (delta / 1000));
-    this.shadow.setPosition(this.targetX, this.targetY);
+    this.shadowContainer.setPosition(this.targetX, this.targetY);
   }
 
   private executeAttack() {
@@ -102,13 +155,16 @@ export class Bird {
       this.onAttackCallback(this.targetX, this.targetY, this.shadowSize / 2);
     }
 
-    // Flash effect
+    // Flash effect - quick swoop animation
     this.scene.tweens.add({
-      targets: this.shadow,
+      targets: this.shadowContainer,
       alpha: 0,
-      duration: 200,
+      scaleX: 1.5,
+      scaleY: 0.3,
+      duration: 150,
       onComplete: () => {
-        this.shadow.setVisible(false);
+        this.shadowContainer.setVisible(false);
+        this.shadowContainer.setScale(1);
       },
     });
 
@@ -135,6 +191,6 @@ export class Bird {
   }
 
   destroy() {
-    this.shadow.destroy();
+    this.shadowContainer.destroy();
   }
 }
