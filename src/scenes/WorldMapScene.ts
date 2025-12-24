@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, COLORS, ISLANDS, WORLD_MAP } from '../config/constants';
+import { GAME_WIDTH, GAME_HEIGHT, COLORS, ISLANDS } from '../config/constants';
 import { Lizard } from '../entities/Lizard';
 import { Modal } from '../ui/Modal';
 import { Joystick } from '../ui/Joystick';
@@ -30,7 +30,10 @@ export class WorldMapScene extends Phaser.Scene {
     super({ key: 'WorldMapScene' });
   }
 
-  create() {
+  create(data?: { fromLevel?: number }) {
+    // Reset islands array (important when scene restarts!)
+    this.islands = [];
+
     // Create ocean background
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.ocean);
 
@@ -44,12 +47,27 @@ export class WorldMapScene extends Phaser.Scene {
     // Create dotted paths between islands
     this.createPaths();
 
-    // Create lizard (swimming mode) - spawn middle-left, away from islands and joystick
-    this.lizard = new Lizard(this, 60, GAME_HEIGHT / 2);
+    // Determine spawn position based on where player came from
+    let spawnX = 60;
+    let spawnY = GAME_HEIGHT / 2;
+
+    if (data?.fromLevel) {
+      // Spawn to the RIGHT of the completed island so they don't re-trigger modal
+      const completedIsland = this.islands.find(i => i.id === data.fromLevel);
+      if (completedIsland) {
+        spawnX = completedIsland.x + 100; // Right of the island
+        spawnY = completedIsland.y;
+        // Keep in bounds
+        spawnX = Math.min(spawnX, GAME_WIDTH - 50);
+      }
+    }
+
+    // Create lizard (swimming mode)
+    this.lizard = new Lizard(this, spawnX, spawnY);
     this.lizard.setSwimming(true);
 
-    // Reset modal cooldown
-    this.modalCooldown = 0;
+    // Set initial cooldown when coming from a level to prevent immediate re-trigger
+    this.modalCooldown = data?.fromLevel ? 1500 : 0;
 
     // Set world bounds
     this.physics.world.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
@@ -238,10 +256,12 @@ export class WorldMapScene extends Phaser.Scene {
     this.lizard.move(dx, dy);
 
     // Check proximity to islands (only if cooldown expired)
+    // Require lizard to be closer to island center before triggering
     if (this.modalCooldown <= 0) {
       for (const island of this.islands) {
         const distance = Phaser.Math.Distance.Between(this.lizard.x, this.lizard.y, island.x, island.y);
-        if (distance < WORLD_MAP.interactionRadius + 40) {
+        // Only trigger when within 60px of island center (was 90px before)
+        if (distance < 60) {
           this.showIslandModal(island);
           break;
         }

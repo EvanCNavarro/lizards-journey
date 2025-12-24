@@ -398,7 +398,7 @@ export class Level1Scene extends Phaser.Scene {
           {
             text: 'Quit',
             callback: () => {
-              this.scene.start('WorldMapScene');
+              this.scene.start('WorldMapScene', { fromLevel: 1 });
             },
           },
         ],
@@ -449,7 +449,7 @@ export class Level1Scene extends Phaser.Scene {
             text: 'Continue',
             primary: true,
             callback: () => {
-              this.scene.start('WorldMapScene');
+              this.scene.start('WorldMapScene', { fromLevel: 1 });
             },
           },
         ],
@@ -476,7 +476,7 @@ export class Level1Scene extends Phaser.Scene {
           {
             text: 'Exit',
             callback: () => {
-              this.scene.start('WorldMapScene');
+              this.scene.start('WorldMapScene', { fromLevel: 1 });
             },
           },
         ],
