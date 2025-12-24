@@ -3,73 +3,50 @@ import { BIRD } from '../config/constants';
 
 export class Bird {
   private scene: Phaser.Scene;
-  private shadowContainer: Phaser.GameObjects.Container;
-  private shadowOuter: Phaser.GameObjects.Ellipse;
-  private shadowInner: Phaser.GameObjects.Ellipse;
-  private birdShape: Phaser.GameObjects.Graphics;
-  private isAttacking: boolean = false;
+  private graphics: Phaser.GameObjects.Graphics;
+  private warningText: Phaser.GameObjects.Text;
+
+  // Bird state
+  private state: 'circling' | 'attacking' = 'circling';
   private attackTimer: number = 0;
   private cooldownTimer: number = 0;
   private currentCooldown: number = 0;
-  private targetX: number = 0;
-  private targetY: number = 0;
+
+  // Shadow position and size
+  private shadowX: number = 0;
+  private shadowY: number = 0;
   private shadowSize: number = BIRD.minShadowSize;
+  private targetSize: number = BIRD.minShadowSize;
+
+  // Circling behavior
+  private circleAngle: number = 0;
+  private circleRadius: number = 100;
+  private circleCenterX: number = 0;
+  private circleCenterY: number = 0;
 
   private onAttackCallback?: (x: number, y: number, radius: number) => void;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
 
-    // Create shadow container
-    this.shadowContainer = scene.add.container(0, 0);
-    this.shadowContainer.setDepth(35);
-    this.shadowContainer.setVisible(false);
+    // Create graphics for drawing shadow
+    this.graphics = scene.add.graphics();
+    this.graphics.setDepth(25); // Below lizard but above grass
 
-    // Outer shadow (darker ring)
-    this.shadowOuter = scene.add.ellipse(0, 0, BIRD.minShadowSize, BIRD.minShadowSize * 0.6, 0x000000, 0.3);
-    this.shadowOuter.setStrokeStyle(3, 0x000000, 0.5);
-    this.shadowContainer.add(this.shadowOuter);
+    // Warning text for attack
+    this.warningText = scene.add.text(0, 0, '⚠️ DANGER!', {
+      fontSize: '18px',
+      color: '#ff0000',
+      stroke: '#000000',
+      strokeThickness: 3,
+    });
+    this.warningText.setOrigin(0.5, 0.5);
+    this.warningText.setDepth(101);
+    this.warningText.setVisible(false);
 
-    // Inner shadow (core)
-    this.shadowInner = scene.add.ellipse(0, 0, BIRD.minShadowSize * 0.6, BIRD.minShadowSize * 0.4, 0x000000, 0.5);
-    this.shadowContainer.add(this.shadowInner);
-
-    // Bird silhouette shape
-    this.birdShape = scene.add.graphics();
-    this.drawBirdShape(BIRD.minShadowSize * 0.5);
-    this.shadowContainer.add(this.birdShape);
-
-    // Set initial cooldown
-    this.resetCooldown();
-  }
-
-  private drawBirdShape(size: number) {
-    this.birdShape.clear();
-    this.birdShape.fillStyle(0x000000, 0.6);
-
-    // Simple bird silhouette (body + wings)
-    const wingSpan = size * 0.8;
-    const bodyLength = size * 0.4;
-
-    // Body (ellipse-ish)
-    this.birdShape.fillEllipse(0, 0, bodyLength, bodyLength * 0.5);
-
-    // Left wing
-    this.birdShape.fillTriangle(
-      -bodyLength * 0.3, 0,
-      -wingSpan, -size * 0.15,
-      -wingSpan * 0.5, size * 0.1
-    );
-
-    // Right wing
-    this.birdShape.fillTriangle(
-      bodyLength * 0.3, 0,
-      wingSpan, -size * 0.15,
-      wingSpan * 0.5, size * 0.1
-    );
-
-    // Head
-    this.birdShape.fillCircle(0, -bodyLength * 0.3, bodyLength * 0.2);
+    // Initial cooldown before first attack
+    this.currentCooldown = Phaser.Math.Between(3000, 5000);
+    this.circleAngle = Math.random() * Math.PI * 2;
   }
 
   onAttack(callback: (x: number, y: number, radius: number) => void) {
@@ -77,120 +54,183 @@ export class Bird {
   }
 
   update(delta: number, playerX: number, playerY: number, boundaryRadius: number, centerX: number, centerY: number) {
-    if (this.isAttacking) {
-      this.updateAttack(delta, playerX, playerY);
+    // Update circle center to follow player loosely
+    this.circleCenterX = Phaser.Math.Linear(this.circleCenterX, playerX, 0.02);
+    this.circleCenterY = Phaser.Math.Linear(this.circleCenterY, playerY, 0.02);
+
+    if (this.state === 'circling') {
+      this.updateCircling(delta, playerX, playerY, boundaryRadius, centerX, centerY);
     } else {
-      this.updateCooldown(delta, playerX, playerY, boundaryRadius, centerX, centerY);
+      this.updateAttacking(delta, playerX, playerY);
     }
+
+    // Always draw the shadow
+    this.drawShadow();
   }
 
-  private updateCooldown(delta: number, playerX: number, playerY: number, boundaryRadius: number, centerX: number, centerY: number) {
+  private updateCircling(delta: number, playerX: number, playerY: number, boundaryRadius: number, centerX: number, centerY: number) {
+    // Bird circles overhead
+    this.circleAngle += delta * 0.001; // Slow rotation
+    if (this.circleAngle > Math.PI * 2) {
+      this.circleAngle -= Math.PI * 2;
+    }
+
+    // Calculate shadow position (circling around player area)
+    this.shadowX = this.circleCenterX + Math.cos(this.circleAngle) * this.circleRadius;
+    this.shadowY = this.circleCenterY + Math.sin(this.circleAngle) * this.circleRadius * 0.5; // Elliptical
+
+    // Keep within island bounds
+    const distFromCenter = Phaser.Math.Distance.Between(this.shadowX, this.shadowY, centerX, centerY);
+    if (distFromCenter > boundaryRadius * 0.85) {
+      const angle = Phaser.Math.Angle.Between(centerX, centerY, this.shadowX, this.shadowY);
+      this.shadowX = centerX + Math.cos(angle) * boundaryRadius * 0.85;
+      this.shadowY = centerY + Math.sin(angle) * boundaryRadius * 0.85;
+    }
+
+    // Shadow stays small while circling
+    this.targetSize = BIRD.minShadowSize;
+    this.shadowSize = Phaser.Math.Linear(this.shadowSize, this.targetSize, 0.1);
+
+    // Check cooldown for next attack
     this.cooldownTimer += delta;
-
     if (this.cooldownTimer >= this.currentCooldown) {
-      // Start new attack
-      this.startAttack(playerX, playerY, boundaryRadius, centerX, centerY);
+      this.startAttack(playerX, playerY);
     }
   }
 
-  private startAttack(playerX: number, playerY: number, boundaryRadius: number, centerX: number, centerY: number) {
-    this.isAttacking = true;
+  private startAttack(_playerX: number, _playerY: number) {
+    this.state = 'attacking';
     this.attackTimer = 0;
-    this.shadowSize = BIRD.minShadowSize;
 
-    // Position shadow near player but offset randomly
-    const offsetAngle = Math.random() * Math.PI * 2;
-    const offsetDistance = 50 + Math.random() * 50;
-    this.targetX = playerX + Math.cos(offsetAngle) * offsetDistance;
-    this.targetY = playerY + Math.sin(offsetAngle) * offsetDistance;
-
-    // Clamp to island bounds
-    const distFromCenter = Phaser.Math.Distance.Between(this.targetX, this.targetY, centerX, centerY);
-    if (distFromCenter > boundaryRadius * 0.8) {
-      const angle = Phaser.Math.Angle.Between(centerX, centerY, this.targetX, this.targetY);
-      this.targetX = centerX + Math.cos(angle) * boundaryRadius * 0.8;
-      this.targetY = centerY + Math.sin(angle) * boundaryRadius * 0.8;
-    }
-
-    this.shadowContainer.setPosition(this.targetX, this.targetY);
-    this.shadowContainer.setVisible(true);
-    this.shadowContainer.setAlpha(0.4);
-    this.shadowContainer.setScale(0.3); // Start small
+    // Show warning
+    this.warningText.setVisible(true);
   }
 
-  private updateAttack(delta: number, playerX: number, playerY: number) {
+  private updateAttacking(delta: number, playerX: number, playerY: number) {
     this.attackTimer += delta;
     const progress = this.attackTimer / BIRD.attackDuration;
 
     if (progress >= 1) {
-      // Attack complete - check for hit
       this.executeAttack();
       return;
     }
 
-    // Grow shadow
-    this.shadowSize = BIRD.minShadowSize + (BIRD.maxShadowSize - BIRD.minShadowSize) * progress;
-    this.shadowOuter.setSize(this.shadowSize, this.shadowSize * 0.6);
-    this.shadowInner.setSize(this.shadowSize * 0.6, this.shadowSize * 0.4);
+    // Shadow grows and moves toward player
+    this.targetSize = BIRD.minShadowSize + (BIRD.maxShadowSize - BIRD.minShadowSize) * progress;
+    this.shadowSize = Phaser.Math.Linear(this.shadowSize, this.targetSize, 0.15);
 
-    // Redraw bird shape at new size
-    this.drawBirdShape(this.shadowSize * 0.5);
+    // Track toward player more aggressively
+    const trackSpeed = 1.5 + progress * 2; // Gets faster as attack progresses
+    this.shadowX = Phaser.Math.Linear(this.shadowX, playerX, trackSpeed * (delta / 1000));
+    this.shadowY = Phaser.Math.Linear(this.shadowY, playerY, trackSpeed * (delta / 1000));
 
-    // Increase opacity and scale
-    const alpha = 0.4 + 0.5 * progress;
-    const scale = 0.3 + 0.7 * progress;
-    this.shadowContainer.setAlpha(alpha);
-    this.shadowContainer.setScale(scale);
+    // Update warning position
+    this.warningText.setPosition(this.shadowX, this.shadowY - this.shadowSize * 0.5 - 15);
 
-    // Track toward player slowly
-    const trackSpeed = 0.5;
-    this.targetX = Phaser.Math.Linear(this.targetX, playerX, trackSpeed * (delta / 1000));
-    this.targetY = Phaser.Math.Linear(this.targetY, playerY, trackSpeed * (delta / 1000));
-    this.shadowContainer.setPosition(this.targetX, this.targetY);
+    // Pulse warning text
+    const pulse = Math.sin(this.attackTimer * 0.015) * 0.2 + 1;
+    this.warningText.setScale(pulse);
+  }
+
+  private drawShadow() {
+    this.graphics.clear();
+
+    const isAttacking = this.state === 'attacking';
+    const baseAlpha = isAttacking ? 0.6 : 0.35;
+
+    // Outer glow (red-tinted when attacking)
+    if (isAttacking) {
+      this.graphics.fillStyle(0x660000, baseAlpha * 0.4);
+      this.graphics.fillEllipse(this.shadowX, this.shadowY, this.shadowSize * 1.4, this.shadowSize * 0.9);
+
+      // Red danger ring
+      this.graphics.lineStyle(3, 0xff0000, baseAlpha);
+      this.graphics.strokeEllipse(this.shadowX, this.shadowY, this.shadowSize * 1.2, this.shadowSize * 0.75);
+    }
+
+    // Main shadow ellipse
+    this.graphics.fillStyle(0x000000, baseAlpha);
+    this.graphics.fillEllipse(this.shadowX, this.shadowY, this.shadowSize, this.shadowSize * 0.6);
+
+    // Bird silhouette
+    this.graphics.fillStyle(0x222222, baseAlpha + 0.15);
+
+    // Body
+    const bodyW = this.shadowSize * 0.25;
+    const bodyH = this.shadowSize * 0.12;
+    this.graphics.fillEllipse(this.shadowX, this.shadowY, bodyW, bodyH);
+
+    // Wings - spread wider when attacking
+    const wingSpread = isAttacking ? 0.4 : 0.3;
+    const wingW = this.shadowSize * wingSpread;
+    const wingH = this.shadowSize * 0.08;
+
+    // Left wing
+    this.graphics.beginPath();
+    this.graphics.moveTo(this.shadowX - bodyW * 0.3, this.shadowY);
+    this.graphics.lineTo(this.shadowX - wingW, this.shadowY - wingH);
+    this.graphics.lineTo(this.shadowX - wingW * 0.7, this.shadowY + wingH * 0.3);
+    this.graphics.closePath();
+    this.graphics.fillPath();
+
+    // Right wing
+    this.graphics.beginPath();
+    this.graphics.moveTo(this.shadowX + bodyW * 0.3, this.shadowY);
+    this.graphics.lineTo(this.shadowX + wingW, this.shadowY - wingH);
+    this.graphics.lineTo(this.shadowX + wingW * 0.7, this.shadowY + wingH * 0.3);
+    this.graphics.closePath();
+    this.graphics.fillPath();
+
+    // Head (small circle)
+    this.graphics.fillCircle(this.shadowX, this.shadowY - bodyH * 1.5, bodyH * 0.4);
   }
 
   private executeAttack() {
+    // Hide warning
+    this.warningText.setVisible(false);
+
     // Trigger attack callback
     if (this.onAttackCallback) {
-      this.onAttackCallback(this.targetX, this.targetY, this.shadowSize / 2);
+      this.onAttackCallback(this.shadowX, this.shadowY, this.shadowSize / 2);
     }
 
-    // Flash effect - quick swoop animation
+    // Flash effect
+    const flash = this.scene.add.circle(this.shadowX, this.shadowY, this.shadowSize * 0.4, 0xff0000, 0.7);
+    flash.setDepth(100);
+
     this.scene.tweens.add({
-      targets: this.shadowContainer,
+      targets: flash,
       alpha: 0,
-      scaleX: 1.5,
-      scaleY: 0.3,
-      duration: 150,
-      onComplete: () => {
-        this.shadowContainer.setVisible(false);
-        this.shadowContainer.setScale(1);
-      },
+      scale: 2,
+      duration: 250,
+      onComplete: () => flash.destroy(),
     });
 
-    // Reset for next attack
-    this.isAttacking = false;
+    // Reset to circling
+    this.state = 'circling';
     this.cooldownTimer = 0;
-    this.resetCooldown();
-  }
-
-  private resetCooldown() {
     this.currentCooldown = Phaser.Math.Between(BIRD.cooldownMin, BIRD.cooldownMax);
+
+    // Jump shadow away after attack
+    const escapeAngle = Math.random() * Math.PI * 2;
+    this.shadowX += Math.cos(escapeAngle) * 80;
+    this.shadowY += Math.sin(escapeAngle) * 40;
   }
 
   isActive(): boolean {
-    return this.isAttacking;
+    return this.state === 'attacking';
   }
 
   getShadowPosition(): { x: number; y: number; radius: number } {
     return {
-      x: this.targetX,
-      y: this.targetY,
+      x: this.shadowX,
+      y: this.shadowY,
       radius: this.shadowSize / 2,
     };
   }
 
   destroy() {
-    this.shadowContainer.destroy();
+    this.graphics.destroy();
+    this.warningText.destroy();
   }
 }

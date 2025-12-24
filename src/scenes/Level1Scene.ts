@@ -244,7 +244,6 @@ export class Level1Scene extends Phaser.Scene {
 
   private constrainToIsland() {
     // Use ellipse equation: (x/a)^2 + (y/b)^2 = 1
-    // where a = islandRadius, b = islandRadius * 0.8
     const dx = this.lizard.x - this.islandCenterX;
     const dy = this.lizard.y - this.islandCenterY;
 
@@ -256,17 +255,37 @@ export class Level1Scene extends Phaser.Scene {
 
     if (ellipseDistance > 1) {
       // Project back onto ellipse edge
-      const angle = Math.atan2(dy / b, dx / a);
-      const newX = this.islandCenterX + Math.cos(angle) * a;
-      const newY = this.islandCenterY + Math.sin(angle) * b;
+      const angle = Math.atan2(dy * a, dx * b); // Correct angle for ellipse
+      const newX = this.islandCenterX + a * Math.cos(angle);
+      const newY = this.islandCenterY + b * Math.sin(angle);
 
-      // Smoothly move back instead of hard reset
+      // Move lizard back to edge
       this.lizard.x = newX;
       this.lizard.y = newY;
 
-      // Stop velocity in the outward direction
-      const body = this.lizard.body as Phaser.Physics.Arcade.Body;
-      body.setVelocity(0, 0);
+      // Calculate tangent direction at this point on ellipse
+      // Tangent is perpendicular to normal. Normal at (x,y) on ellipse is (x/a², y/b²)
+      const normalX = dx / (a * a);
+      const normalY = dy / (b * b);
+      const normalLen = Math.sqrt(normalX * normalX + normalY * normalY);
+
+      if (normalLen > 0) {
+        const nx = normalX / normalLen;
+        const ny = normalY / normalLen;
+
+        // Get current velocity
+        const body = this.lizard.body as Phaser.Physics.Arcade.Body;
+        const vx = body.velocity.x;
+        const vy = body.velocity.y;
+
+        // Remove the component of velocity pointing outward (dot product with normal)
+        const outwardSpeed = vx * nx + vy * ny;
+
+        if (outwardSpeed > 0) {
+          // Only remove outward component, keep tangential movement
+          body.setVelocity(vx - outwardSpeed * nx, vy - outwardSpeed * ny);
+        }
+      }
     }
   }
 

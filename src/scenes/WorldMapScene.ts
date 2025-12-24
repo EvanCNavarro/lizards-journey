@@ -44,8 +44,8 @@ export class WorldMapScene extends Phaser.Scene {
     // Create dotted paths between islands
     this.createPaths();
 
-    // Create lizard (swimming mode) - spawn in bottom-left, away from islands
-    this.lizard = new Lizard(this, 80, GAME_HEIGHT - 100);
+    // Create lizard (swimming mode) - spawn middle-left, away from islands and joystick
+    this.lizard = new Lizard(this, 60, GAME_HEIGHT / 2);
     this.lizard.setSwimming(true);
 
     // Reset modal cooldown
