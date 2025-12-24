@@ -72,17 +72,17 @@ export class Level3Scene extends Phaser.Scene {
     this.treePositions = [];
     this.isClimbing = false;
 
+    // Create lizard FIRST (before views that might reference it)
+    this.lizard = new Lizard(this, 100, GAME_HEIGHT - 150);
+    this.lizard.setSwimming(false);
+    this.lizard.setDepth(50);
+
     // Create both view containers
     this.createGroundView();
     this.createCanopyView();
 
-    // Start in ground view
+    // Start in ground view (now lizard exists)
     this.showGroundView();
-
-    // Create lizard (will be repositioned based on phase)
-    this.lizard = new Lizard(this, 100, GAME_HEIGHT - 150);
-    this.lizard.setSwimming(false);
-    this.lizard.setDepth(50);
 
     // Create UI
     this.hud = new HUD(this);
