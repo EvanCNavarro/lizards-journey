@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, COLORS, LEVEL1, LIZARD } from '../config/constants';
+import { GAME_WIDTH, GAME_HEIGHT, COLORS, LIZARD } from '../config/constants';
 import { Lizard } from '../entities/Lizard';
 import { Bug } from '../entities/Bug';
 import type { BugType } from '../entities/Bug';
@@ -9,7 +9,14 @@ import { Modal } from '../ui/Modal';
 import { Joystick } from '../ui/Joystick';
 import { saveBestScore, getBestScore, unlockIsland } from '../lib/storage';
 
-export class Level1Scene extends Phaser.Scene {
+// Level 2 specific settings
+const LEVEL2 = {
+  timeLimit: 75, // More time, but harder
+  bugsToWin: 15, // More bugs needed
+  islandRadius: 230, // Slightly smaller - more cramped with rocks
+};
+
+export class Level2Scene extends Phaser.Scene {
   private lizard!: Lizard;
   private bugs: Bug[] = [];
   private bird!: Bird;
@@ -22,36 +29,40 @@ export class Level1Scene extends Phaser.Scene {
 
   private islandCenterX: number = GAME_WIDTH / 2;
   private islandCenterY: number = GAME_HEIGHT / 2 + 20;
-  private islandRadius: number = LEVEL1.islandRadius;
+  private islandRadius: number = LEVEL2.islandRadius;
 
   private gameTimer!: Phaser.Time.TimerEvent;
-  private timeRemaining: number = LEVEL1.timeLimit;
+  private timeRemaining: number = LEVEL2.timeLimit;
   private isGameOver: boolean = false;
   private isPaused: boolean = false;
 
-  private readonly MIN_BUGS = 8;
+  // Rock obstacles (lizard and bugs avoid these)
+  private rocks: { x: number; y: number; radiusX: number; radiusY: number }[] = [];
+
+  private readonly MIN_BUGS = 10;
 
   constructor() {
-    super({ key: 'Level1Scene' });
+    super({ key: 'Level2Scene' });
   }
 
   create() {
     this.isGameOver = false;
     this.isPaused = false;
-    this.timeRemaining = LEVEL1.timeLimit;
+    this.timeRemaining = LEVEL2.timeLimit;
     this.bugs = [];
+    this.rocks = [];
 
     // Create ocean background
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.ocean);
 
-    // Create island
+    // Create island with rocks
     this.createIsland();
 
     // Create lizard at center
-    this.lizard = new Lizard(this, this.islandCenterX, this.islandCenterY);
+    this.lizard = new Lizard(this, this.islandCenterX, this.islandCenterY + 50);
     this.lizard.setSwimming(false);
 
-    // Create bugs
+    // Create bugs (more beetles and crickets for rocky terrain)
     this.spawnInitialBugs();
 
     // Create bird hazard
@@ -62,7 +73,7 @@ export class Level1Scene extends Phaser.Scene {
 
     // Create UI
     this.hud = new HUD(this);
-    this.hud.setTarget(LEVEL1.bugsToWin);
+    this.hud.setTarget(LEVEL2.bugsToWin);
     this.hud.setTime(this.timeRemaining);
 
     this.modal = new Modal(this);
@@ -91,7 +102,7 @@ export class Level1Scene extends Phaser.Scene {
     });
 
     // Level title
-    const title = this.add.text(GAME_WIDTH / 2, 70, 'Starter Grove', {
+    const title = this.add.text(GAME_WIDTH / 2, 70, 'Rocky Shore', {
       fontSize: '20px',
       fontStyle: 'bold',
       color: '#ffffff',
@@ -104,89 +115,82 @@ export class Level1Scene extends Phaser.Scene {
   }
 
   private createIsland() {
-    // Island - all sand
+    // Island - tan/brown rocky sand
     const sand = this.add.graphics();
-    sand.fillStyle(COLORS.sand, 1);
+    sand.fillStyle(0xc2b280, 1); // Darker sandy color
     sand.fillEllipse(this.islandCenterX, this.islandCenterY, this.islandRadius * 2, this.islandRadius * 1.6);
     sand.setDepth(1);
 
-    // Lighter sand patches for texture
-    for (let i = 0; i < 6; i++) {
+    // Darker patches
+    for (let i = 0; i < 5; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const dist = Math.random() * this.islandRadius * 0.7;
+      const dist = Math.random() * this.islandRadius * 0.6;
       const x = this.islandCenterX + Math.cos(angle) * dist;
       const y = this.islandCenterY + Math.sin(angle) * dist * 0.8;
-      const patch = this.add.ellipse(x, y, 40 + Math.random() * 30, 25 + Math.random() * 20, 0xf9e4a6, 0.4);
+      const patch = this.add.ellipse(x, y, 35 + Math.random() * 25, 20 + Math.random() * 15, 0xa89060, 0.5);
       patch.setDepth(2);
     }
 
-    // Palm tree
-    const treeX = this.islandCenterX;
-    const treeY = this.islandCenterY - 20;
+    // Create rock obstacles
+    const rockPositions = [
+      { x: -80, y: -40, rx: 45, ry: 30 },
+      { x: 70, y: -60, rx: 35, ry: 25 },
+      { x: -50, y: 50, rx: 30, ry: 22 },
+      { x: 90, y: 30, rx: 40, ry: 28 },
+      { x: 0, y: -80, rx: 50, ry: 35 },
+    ];
 
-    // Curved palm trunk (using multiple segments)
-    const trunkGraphics = this.add.graphics();
-    trunkGraphics.fillStyle(0x8b6914, 1); // Darker brown for palm
+    rockPositions.forEach((rock) => {
+      const rockX = this.islandCenterX + rock.x;
+      const rockY = this.islandCenterY + rock.y;
 
-    // Draw trunk as curved shape
-    trunkGraphics.beginPath();
-    trunkGraphics.moveTo(treeX - 8, treeY + 50);
-    trunkGraphics.lineTo(treeX + 8, treeY + 50);
-    trunkGraphics.lineTo(treeX + 12, treeY + 20);
-    trunkGraphics.lineTo(treeX + 6, treeY - 20);
-    trunkGraphics.lineTo(treeX - 6, treeY - 20);
-    trunkGraphics.lineTo(treeX - 12, treeY + 20);
-    trunkGraphics.closePath();
-    trunkGraphics.fillPath();
-    trunkGraphics.setDepth(20);
+      // Store rock for collision
+      this.rocks.push({ x: rockX, y: rockY, radiusX: rock.rx, radiusY: rock.ry });
 
-    // Trunk rings/texture
-    trunkGraphics.lineStyle(2, 0x6b4f0a, 0.5);
-    for (let i = 0; i < 5; i++) {
-      const ringY = treeY + 40 - i * 15;
-      const ringWidth = 10 - i * 1;
-      trunkGraphics.strokeEllipse(treeX, ringY, ringWidth * 2, 6);
-    }
+      // Draw rock (layered for 3D effect)
+      const baseRock = this.add.ellipse(rockX, rockY + 5, rock.rx, rock.ry * 0.8, 0x505050);
+      baseRock.setDepth(18);
 
-    // Palm fronds (leaf shapes radiating from top)
-    const frondGraphics = this.add.graphics();
-    frondGraphics.setDepth(21);
+      const mainRock = this.add.ellipse(rockX, rockY, rock.rx, rock.ry, 0x696969);
+      mainRock.setDepth(19);
 
-    const frondAngles = [-150, -120, -80, -40, 0, 40, 80, 120, 150];
-    frondAngles.forEach((angleDeg) => {
-      const angle = (angleDeg * Math.PI) / 180;
-      const length = 50 + Math.random() * 15;
-
-      // Frond stem
-      const endX = treeX + Math.cos(angle) * length;
-      const endY = treeY - 25 + Math.sin(angle) * length * 0.6;
-
-      // Draw frond as elongated leaf shape
-      frondGraphics.fillStyle(0x228b22, 1);
-      frondGraphics.beginPath();
-      frondGraphics.moveTo(treeX, treeY - 25);
-
-      // Control points for curved frond
-      const midX = treeX + Math.cos(angle) * length * 0.5;
-      const midY = treeY - 25 + Math.sin(angle) * length * 0.3;
-
-      // Draw leaf shape
-      frondGraphics.lineTo(midX - Math.sin(angle) * 8, midY + Math.cos(angle) * 8);
-      frondGraphics.lineTo(endX, endY);
-      frondGraphics.lineTo(midX + Math.sin(angle) * 8, midY - Math.cos(angle) * 8);
-      frondGraphics.closePath();
-      frondGraphics.fillPath();
+      const highlight = this.add.ellipse(rockX - rock.rx * 0.2, rockY - rock.ry * 0.2, rock.rx * 0.6, rock.ry * 0.5, 0x888888, 0.5);
+      highlight.setDepth(20);
     });
 
-    // Coconuts at top of trunk
-    const coconutColor = 0x5c4033;
-    this.add.circle(treeX - 6, treeY - 18, 6, coconutColor).setDepth(22);
-    this.add.circle(treeX + 6, treeY - 18, 6, coconutColor).setDepth(22);
-    this.add.circle(treeX, treeY - 22, 5, coconutColor).setDepth(22);
+    // Small pebbles scattered around
+    for (let i = 0; i < 15; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 50 + Math.random() * (this.islandRadius - 70);
+      const x = this.islandCenterX + Math.cos(angle) * dist;
+      const y = this.islandCenterY + Math.sin(angle) * dist * 0.8;
+
+      // Check not inside a rock
+      let insideRock = false;
+      for (const rock of this.rocks) {
+        const dx = x - rock.x;
+        const dy = y - rock.y;
+        if ((dx * dx) / (rock.radiusX * rock.radiusX) + (dy * dy) / (rock.radiusY * rock.radiusY) < 1.2) {
+          insideRock = true;
+          break;
+        }
+      }
+
+      if (!insideRock) {
+        const pebble = this.add.circle(x, y, 3 + Math.random() * 4, 0x777777);
+        pebble.setDepth(3);
+      }
+    }
   }
 
   private spawnInitialBugs() {
-    const bugTypes: BugType[] = ['fly', 'fly', 'fly', 'beetle', 'beetle', 'cricket', 'cricket', 'dragonfly'];
+    // More beetles and crickets (rocky terrain bugs)
+    const bugTypes: BugType[] = [
+      'beetle', 'beetle', 'beetle', 'beetle',
+      'cricket', 'cricket', 'cricket',
+      'fly', 'fly',
+      'dragonfly'
+    ];
 
     bugTypes.forEach((type) => {
       this.spawnBug(type);
@@ -194,28 +198,41 @@ export class Level1Scene extends Phaser.Scene {
   }
 
   private spawnBug(type?: BugType) {
-    // Random position within island bounds (avoiding center tree area)
     let x: number, y: number;
     let attempts = 0;
+    let valid = false;
 
-    do {
+    while (!valid && attempts < 30) {
       const angle = Math.random() * Math.PI * 2;
-      const distance = 60 + Math.random() * (this.islandRadius - 80);
+      const distance = 50 + Math.random() * (this.islandRadius - 70);
       x = this.islandCenterX + Math.cos(angle) * distance;
       y = this.islandCenterY + Math.sin(angle) * distance * 0.8;
-      attempts++;
-    } while (
-      Phaser.Math.Distance.Between(x, y, this.islandCenterX, this.islandCenterY - 30) < 60 &&
-      attempts < 20
-    );
 
-    // Random type if not specified
+      // Check not inside any rock
+      valid = true;
+      for (const rock of this.rocks) {
+        const dx = x! - rock.x;
+        const dy = y! - rock.y;
+        if ((dx * dx) / (rock.radiusX * rock.radiusX) + (dy * dy) / (rock.radiusY * rock.radiusY) < 1.3) {
+          valid = false;
+          break;
+        }
+      }
+      attempts++;
+    }
+
+    if (!valid) {
+      x = this.islandCenterX;
+      y = this.islandCenterY + 60;
+    }
+
+    // Random type if not specified (favor beetles/crickets)
     if (!type) {
-      const types: BugType[] = ['fly', 'fly', 'beetle', 'cricket', 'dragonfly'];
+      const types: BugType[] = ['beetle', 'beetle', 'cricket', 'cricket', 'fly', 'dragonfly'];
       type = types[Math.floor(Math.random() * types.length)];
     }
 
-    const bug = new Bug(this, x, y, type, this.islandRadius, this.islandCenterX, this.islandCenterY);
+    const bug = new Bug(this, x!, y!, type, this.islandRadius, this.islandCenterX, this.islandCenterY);
     this.bugs.push(bug);
   }
 
@@ -240,23 +257,21 @@ export class Level1Scene extends Phaser.Scene {
     let dx = 0;
     let dy = 0;
 
-    // Keyboard input
     if (this.cursors.left.isDown || this.wasd.A.isDown) dx -= 1;
     if (this.cursors.right.isDown || this.wasd.D.isDown) dx += 1;
     if (this.cursors.up.isDown || this.wasd.W.isDown) dy -= 1;
     if (this.cursors.down.isDown || this.wasd.S.isDown) dy += 1;
 
-    // Joystick input
     if (this.joystick.input.isActive) {
       dx = this.joystick.input.x;
       dy = this.joystick.input.y;
     }
 
-    // Move lizard
     this.lizard.move(dx, dy);
 
-    // Constrain lizard to island
+    // Constrain to island and avoid rocks
     this.constrainToIsland();
+    this.avoidRocks();
 
     // Update bugs
     this.bugs.forEach((bug) => bug.update(delta));
@@ -273,34 +288,28 @@ export class Level1Scene extends Phaser.Scene {
     }
 
     // Check win condition
-    if (this.hud.getBugsCollected() >= LEVEL1.bugsToWin) {
+    if (this.hud.getBugsCollected() >= LEVEL2.bugsToWin) {
       this.gameOver(true);
     }
   }
 
   private constrainToIsland() {
-    // Use ellipse equation: (x/a)^2 + (y/b)^2 = 1
     const dx = this.lizard.x - this.islandCenterX;
     const dy = this.lizard.y - this.islandCenterY;
 
-    const a = this.islandRadius - LIZARD.size / 2; // horizontal radius
-    const b = a * 0.8; // vertical radius (ellipse is squished)
+    const a = this.islandRadius - LIZARD.size / 2;
+    const b = a * 0.8;
 
-    // Check if outside ellipse: (dx/a)^2 + (dy/b)^2 > 1
     const ellipseDistance = (dx * dx) / (a * a) + (dy * dy) / (b * b);
 
     if (ellipseDistance > 1) {
-      // Project back onto ellipse edge
-      const angle = Math.atan2(dy * a, dx * b); // Correct angle for ellipse
+      const angle = Math.atan2(dy * a, dx * b);
       const newX = this.islandCenterX + a * Math.cos(angle);
       const newY = this.islandCenterY + b * Math.sin(angle);
 
-      // Move lizard back to edge
       this.lizard.x = newX;
       this.lizard.y = newY;
 
-      // Calculate tangent direction at this point on ellipse
-      // Tangent is perpendicular to normal. Normal at (x,y) on ellipse is (x/a², y/b²)
       const normalX = dx / (a * a);
       const normalY = dy / (b * b);
       const normalLen = Math.sqrt(normalX * normalX + normalY * normalY);
@@ -309,18 +318,37 @@ export class Level1Scene extends Phaser.Scene {
         const nx = normalX / normalLen;
         const ny = normalY / normalLen;
 
-        // Get current velocity
         const body = this.lizard.body as Phaser.Physics.Arcade.Body;
         const vx = body.velocity.x;
         const vy = body.velocity.y;
 
-        // Remove the component of velocity pointing outward (dot product with normal)
         const outwardSpeed = vx * nx + vy * ny;
 
         if (outwardSpeed > 0) {
-          // Only remove outward component, keep tangential movement
           body.setVelocity(vx - outwardSpeed * nx, vy - outwardSpeed * ny);
         }
+      }
+    }
+  }
+
+  private avoidRocks() {
+    for (const rock of this.rocks) {
+      const dx = this.lizard.x - rock.x;
+      const dy = this.lizard.y - rock.y;
+      const rx = rock.radiusX + LIZARD.size / 2;
+      const ry = rock.radiusY + LIZARD.size / 2;
+
+      const ellipseDist = (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry);
+
+      if (ellipseDist < 1) {
+        // Push out of rock
+        const angle = Math.atan2(dy * rx, dx * ry);
+        this.lizard.x = rock.x + rx * Math.cos(angle);
+        this.lizard.y = rock.y + ry * Math.sin(angle);
+
+        // Stop velocity toward rock
+        const body = this.lizard.body as Phaser.Physics.Arcade.Body;
+        body.setVelocity(0, 0);
       }
     }
   }
@@ -333,45 +361,37 @@ export class Level1Scene extends Phaser.Scene {
       const bugCircle = new Phaser.Geom.Circle(bug.x, bug.y, bug.getRadius());
 
       if (Phaser.Geom.Intersects.CircleToCircle(lizardCircle, bugCircle)) {
-        // Collect bug
         this.hud.addBug(bug.points);
 
-        // Visual feedback
-        this.createCollectEffect(bug.x, bug.y, bug.points);
+        const text = this.add.text(bug.x, bug.y, `+${bug.points}`, {
+          fontSize: '20px',
+          fontStyle: 'bold',
+          color: '#ffff00',
+          stroke: '#000000',
+          strokeThickness: 3,
+        });
+        text.setOrigin(0.5, 0.5);
+        text.setDepth(200);
 
-        // Remove bug
+        this.tweens.add({
+          targets: text,
+          y: bug.y - 40,
+          alpha: 0,
+          duration: 600,
+          ease: 'Power2',
+          onComplete: () => text.destroy(),
+        });
+
         bug.destroy();
         this.bugs.splice(i, 1);
       }
     }
   }
 
-  private createCollectEffect(x: number, y: number, points: number) {
-    const text = this.add.text(x, y, `+${points}`, {
-      fontSize: '20px',
-      fontStyle: 'bold',
-      color: '#ffff00',
-      stroke: '#000000',
-      strokeThickness: 3,
-    });
-    text.setOrigin(0.5, 0.5);
-    text.setDepth(200);
-
-    this.tweens.add({
-      targets: text,
-      y: y - 40,
-      alpha: 0,
-      duration: 600,
-      ease: 'Power2',
-      onComplete: () => text.destroy(),
-    });
-  }
-
   private checkBirdAttack(x: number, y: number, radius: number) {
     const distance = Phaser.Math.Distance.Between(this.lizard.x, this.lizard.y, x, y);
 
     if (distance < radius + LIZARD.size / 2) {
-      // Player caught!
       this.gameOver(false);
     }
   }
@@ -415,17 +435,14 @@ export class Level1Scene extends Phaser.Scene {
     const score = this.hud.getScore();
     const timeRemaining = this.hud.getTimeRemaining();
 
-    // Calculate bonus for remaining time if won
     const timeBonus = won ? timeRemaining * 10 : 0;
     const totalScore = score + timeBonus;
 
-    // Save score and check for new best
-    const isNewBest = saveBestScore(1, bugsCollected, timeRemaining, totalScore);
-    const best = getBestScore(1);
+    const isNewBest = saveBestScore(2, bugsCollected, timeRemaining, totalScore);
+    const best = getBestScore(2);
 
     if (won) {
-      // Unlock next island
-      unlockIsland(2);
+      unlockIsland(3);
 
       const content = [
         `Time remaining: ${Math.floor(timeRemaining / 60)}:${(timeRemaining % 60).toString().padStart(2, '0')}`,
@@ -439,7 +456,7 @@ export class Level1Scene extends Phaser.Scene {
         content.push(`Your best: ${best.score}`);
       }
 
-      content.push('', 'Rocky Shore unlocked!');
+      content.push('', 'Dense Jungle unlocked!');
 
       this.modal.show({
         title: 'Level Complete!',
@@ -455,7 +472,6 @@ export class Level1Scene extends Phaser.Scene {
         ],
       });
     } else {
-      // Game over - lost
       const content = [`Bugs collected: ${bugsCollected}`];
 
       if (best) {
@@ -482,7 +498,6 @@ export class Level1Scene extends Phaser.Scene {
         ],
       });
 
-      // Red flash effect
       this.cameras.main.flash(500, 255, 0, 0);
     }
   }

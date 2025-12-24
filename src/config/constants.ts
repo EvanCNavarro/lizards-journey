@@ -89,7 +89,7 @@ export const ISLANDS = [
     x: 400,
     y: 200,
     unlocked: false,
-    description: 'Coming soon...'
+    description: 'Navigate around rocks to catch 15 bugs. Watch out for the bird!'
   },
   {
     id: 3,

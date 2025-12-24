@@ -3,6 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT, COLORS } from './constants';
 import { BootScene } from '../scenes/BootScene';
 import { WorldMapScene } from '../scenes/WorldMapScene';
 import { Level1Scene } from '../scenes/Level1Scene';
+import { Level2Scene } from '../scenes/Level2Scene';
 
 export const gameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -18,7 +19,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, WorldMapScene, Level1Scene],
+  scene: [BootScene, WorldMapScene, Level1Scene, Level2Scene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

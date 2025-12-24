@@ -1,6 +1,6 @@
 # Lizard's Journey - Development Status
 
-> Last updated: December 23, 2024
+> Last updated: December 23, 2024 (Level 2 added)
 
 ## Live Links
 - **Play**: https://lizards-journey.vercel.app
@@ -21,12 +21,19 @@
 - Island 1 unlocked by default, others locked until previous completed
 
 **Level 1 - Starter Grove:**
-- Larger island (radius 250)
-- Central tree with grass/sand areas
+- Sandy island (radius 250) with palm tree and coconuts
 - 4 bug types: fly, beetle, cricket, dragonfly (different speeds/points/behaviors)
 - 60-second timer to catch 10 bugs
 - Bugs respawn to maintain 8+ on screen
 - Smooth boundary sliding (no getting stuck)
+
+**Level 2 - Rocky Shore:**
+- Tan/brown rocky terrain with 5 rock obstacles
+- Slightly smaller island (radius 230) - more cramped
+- 75 seconds to catch 15 bugs
+- More beetles and crickets (rocky terrain bugs)
+- Rock collision prevents lizard from walking through
+- Bugs spawn avoiding rocks
 
 **Bird Hazard:**
 - Always-visible shadow with 🦅 emoji circling overhead
@@ -53,7 +60,7 @@
 
 ## Known Issues / Polish Needed
 
-1. **Levels 2 & 3** - Not implemented yet (show "Coming Soon")
+1. **Level 3** - Not implemented yet (shows "Coming Soon")
 2. **Assets** - Using geometric shapes, no real sprites
 3. **Audio** - No sound effects or music
 4. **Mobile joystick** - Works but could be more polished
@@ -86,7 +93,8 @@ src/
 ├── scenes/
 │   ├── BootScene.ts        # Asset loading
 │   ├── WorldMapScene.ts    # Island selection/swimming
-│   └── Level1Scene.ts      # Bug-catching gameplay
+│   ├── Level1Scene.ts      # Starter Grove gameplay
+│   └── Level2Scene.ts      # Rocky Shore gameplay
 ├── entities/
 │   ├── Lizard.ts           # Player character
 │   ├── Bug.ts              # Collectible bugs (4 types)
@@ -124,13 +132,13 @@ BIRD: 4.5s attack, 6-14s cooldown, max shadow 70
 - [x] Win/lose conditions
 - [x] localStorage saves
 - [x] Desktop + mobile controls
-- [ ] Level 2 & 3 gameplay
+- [x] Level 2 gameplay
+- [ ] Level 3 gameplay
 
 ### Phase 2 (Polish)
 - [ ] Proper sprite art (replace shapes)
 - [ ] Sound effects
 - [ ] Supabase integration (auth, leaderboards)
-- [ ] Level 2: Rocky Shore
 - [ ] Level 3: Dense Jungle
 
 ### Phase 3 (Features)
@@ -186,7 +194,6 @@ git add -A && git commit -m "message" && git push
 4. Check LESSONS_LEARNED.md for architecture guidance
 
 **Next logical tasks:**
-- Implement Level 2 (Rocky Shore) with new layout/difficulty
-- Implement Level 3 (Dense Jungle)
+- Implement Level 3 (Dense Jungle) with jungle-specific mechanics
 - Add sound effects
 - Replace geometric shapes with sprites

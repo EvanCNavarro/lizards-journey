@@ -95,33 +95,61 @@ export class WorldMapScene extends Phaser.Scene {
 
       const container = this.add.container(islandData.x, islandData.y);
 
-      // Island base (sand)
-      const base = this.add.ellipse(0, 0, 80, 60, COLORS.sand);
-      container.add(base);
-
-      // Grass on top
-      const grass = this.add.ellipse(0, -5, 60, 40, isUnlocked ? COLORS.grass : 0x666666);
-      container.add(grass);
-
-      // Tree
+      // Island 1: Starter Grove - Sandy beach with palm tree
       if (islandData.id === 1) {
-        const trunk = this.add.rectangle(0, -10, 8, 20, COLORS.treeTrunk);
-        const leaves = this.add.circle(0, -25, 18, isUnlocked ? COLORS.treeLeaves : 0x444444);
+        const base = this.add.ellipse(0, 0, 80, 60, COLORS.sand);
+        container.add(base);
+
+        // Palm trunk
+        const trunk = this.add.rectangle(0, -5, 6, 25, isUnlocked ? 0x8b6914 : 0x555555);
         container.add(trunk);
-        container.add(leaves);
-      } else if (islandData.id === 2) {
-        // Rocky shore - add rocks
-        for (let i = 0; i < 3; i++) {
-          const rock = this.add.circle(-15 + i * 15, -5, 8, isUnlocked ? 0x888888 : 0x555555);
-          container.add(rock);
+
+        // Palm fronds (simple triangles)
+        const frondColor = isUnlocked ? 0x228b22 : 0x444444;
+        const frond1 = this.add.triangle(-15, -22, 0, 10, 20, 0, 10, -5, frondColor);
+        const frond2 = this.add.triangle(15, -22, 0, 10, -20, 0, -10, -5, frondColor);
+        const frond3 = this.add.triangle(0, -28, -5, 8, 5, 8, 0, -8, frondColor);
+        container.add(frond1);
+        container.add(frond2);
+        container.add(frond3);
+
+        // Coconuts
+        if (isUnlocked) {
+          this.add.circle(0, -15, 3, 0x5c4033);
         }
-      } else if (islandData.id === 3) {
-        // Dense jungle - multiple trees
+      }
+      // Island 2: Rocky Shore - Gray rocks on sand
+      else if (islandData.id === 2) {
+        const base = this.add.ellipse(0, 0, 80, 60, isUnlocked ? 0xc2b280 : 0x666666);
+        container.add(base);
+
+        // Rocks
+        const rockColor = isUnlocked ? 0x696969 : 0x555555;
+        const rock1 = this.add.ellipse(-15, -5, 20, 15, rockColor);
+        const rock2 = this.add.ellipse(10, 0, 25, 18, rockColor);
+        const rock3 = this.add.ellipse(0, -15, 15, 12, isUnlocked ? 0x808080 : 0x555555);
+        container.add(rock1);
+        container.add(rock2);
+        container.add(rock3);
+      }
+      // Island 3: Dense Jungle - Green with multiple trees
+      else if (islandData.id === 3) {
+        const base = this.add.ellipse(0, 0, 80, 60, COLORS.sand);
+        container.add(base);
+        const grass = this.add.ellipse(0, -3, 65, 45, isUnlocked ? COLORS.grass : 0x555555);
+        container.add(grass);
+
+        // Multiple palm trees
         for (let i = 0; i < 2; i++) {
-          const trunk = this.add.rectangle(-12 + i * 24, -8, 6, 16, COLORS.treeTrunk);
-          const leaves = this.add.circle(-12 + i * 24, -20, 14, isUnlocked ? COLORS.treeLeaves : 0x444444);
+          const tx = -12 + i * 24;
+          const trunk = this.add.rectangle(tx, -5, 5, 20, isUnlocked ? 0x8b6914 : 0x444444);
           container.add(trunk);
-          container.add(leaves);
+
+          const frondColor = isUnlocked ? 0x228b22 : 0x444444;
+          const f1 = this.add.triangle(tx - 10, -18, 0, 8, 15, 0, 8, -4, frondColor);
+          const f2 = this.add.triangle(tx + 10, -18, 0, 8, -15, 0, -8, -4, frondColor);
+          container.add(f1);
+          container.add(f2);
         }
       }
 
@@ -287,9 +315,10 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   private enterIsland(island: Island) {
-    // For now, only Island 1 has gameplay
     if (island.id === 1) {
       this.scene.start('Level1Scene');
+    } else if (island.id === 2) {
+      this.scene.start('Level2Scene');
     } else {
       // Coming soon
       this.modal.show({
